@@ -1,95 +1,70 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { gql, useQuery, useLazyQuery } from '@apollo/client';
+import client from './lib/client';
+import { useState } from 'react';
+
+// GraphQL Queries
+const GET_POSTS = gql`
+  query getAllPosts {
+    getAllPosts {
+      id
+      title
+    }
+  }
+`;
+
+const GET_POST_BY_ID = gql`
+  query getPostById($id: Int!) {
+    getPostById(id: $id) {
+      id
+      title
+      body
+    }
+  }
+`;
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [selectedPostId, setSelectedPostId] = useState(null);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+  // Fetch all posts
+  const { loading: loadingPosts, error: errorPosts, data: postsData } = useQuery(GET_POSTS, { client });
+
+  // Lazy query for fetching post by ID
+  const [fetchPostById, { loading: loadingPost, error: errorPost, data: postData }] = useLazyQuery(GET_POST_BY_ID, {
+    client,
+  });
+
+  // Handle post selection
+  const handlePostClick = (id) => {
+    setSelectedPostId(id);
+    fetchPostById({ variables: { id } });
+  };
+
+  if (loadingPosts) return <p>Loading posts...</p>;
+  if (errorPosts) return <p>Error loading posts: {errorPosts.message}</p>;
+
+  return (
+    <div>
+      <h1>Posts</h1>
+      <ul>
+        {postsData.getAllPosts.map((post) => (
+          <li key={post.id}>
+            <button onClick={() => handlePostClick(post.id)}>{post.title}</button>
+          </li>
+        ))}
+      </ul>
+
+      {loadingPost && <p>Loading post details...</p>}
+      {errorPost && <p>Error loading post details: {errorPost.message}</p>}
+
+      {postData && postData.getPostById && (
+        <div>
+          <h2>Post Details</h2>
+          <p><strong>Title:</strong> {postData.getPostById.title}</p>
+          <p><strong>Content:</strong> {postData.getPostById.body}</p>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
     </div>
   );
 }
